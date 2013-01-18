@@ -1,1 +1,1 @@
-DATAGRAM_IO_UDP_HOST=server:host go run main.go
+DATAGRAM_IO_UDP_HOST=server:host INTERVAL=10s go run main.go

@@ -44,13 +44,20 @@ func (self ServerInfo) AvgLoad() (float64) {
 }
 
 func main() {
-  udp_host  := os.Getenv("DATAGRAM_IO_UDP_HOST")
+  udp_host      := os.Getenv("DATAGRAM_IO_UDP_HOST")
+  intervalStr   := os.Getenv("INTERVAL")
 	
   udp.Init(udp_host)
   
   server := new(ServerInfo)
   hostname, _ := os.Hostname()
-  ticker := time.NewTicker(1000000000 * 10) // 10 secs.
+  duration, err := time.ParseDuration(intervalStr)
+  if err!=nil {
+    panic("INTERVAL cannot be parsed")
+  }
+  ticker := time.NewTicker(duration) // 10 secs.
+  
+  log.Println("Reporting server load for", hostname, "every", intervalStr)
   
   for {
     select {
@@ -62,7 +69,6 @@ func main() {
       data["status"] = server.AvgLoad()
       
       udp.Send("load_avg", data)
-      log.Println("Current server load for", hostname, "is", server.AvgLoad())
     }
   }
 
