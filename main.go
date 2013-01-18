@@ -5,33 +5,25 @@ import (
     "os/exec"
     "strconv"
     "regexp"
-    "strings"
+    "time"
+    "os"
+    "runtime"
+    "bootic_server_stats/udp"
 )
 
 type ServerInfo struct {
   
 }
 
-func (self ServerInfo) Hostname() (hname string) {
-  out, err := exec.Command("hostname").Output()
-  
-  if err!=nil {
-      hname = ""
-      return
-  }
-  
-  hname = string(out)
-  hname = strings.Replace(hname, "\n", "", -1)
-  return
-}
-
-func (self ServerInfo) AvgLoad() (loadFloat float64) {
+func (self ServerInfo) AvgLoad() (float64) {
   
   out, err := exec.Command("uptime").Output()
   
   if err!=nil {
-      return
+      return 0.0
   }
+  
+  cpus := runtime.NumCPU()
   
   line := string(out)
   
@@ -44,13 +36,34 @@ func (self ServerInfo) AvgLoad() (loadFloat float64) {
     load = v
   }
   
-  loadFloat, _ = strconv.ParseFloat(load, 64)
+  loadFloat, _ := strconv.ParseFloat(load, 64)
   
-  return
+  // we want CPU utilization for all available CPUs
+  return loadFloat / float64(cpus)
   
 }
 
 func main() {
-  foo := new(ServerInfo)
-  log.Println("Current server load for", foo.Hostname(), "is", foo.AvgLoad())
+  udp_host  := os.Getenv("DATAGRAM_IO_UDP_HOST")
+	
+  udp.Init(udp_host)
+  
+  server := new(ServerInfo)
+  hostname, _ := os.Hostname()
+  ticker := time.NewTicker(1000000000 * 10) // 10 secs.
+  
+  for {
+    select {
+    case <- ticker.C:
+      data := make(map[string]interface{})
+
+      data["app"] = "server_stats"
+      data["account"] = hostname
+      data["status"] = server.AvgLoad()
+      
+      udp.Send("load_avg", data)
+      log.Println("Current server load for", hostname, "is", server.AvgLoad())
+    }
+  }
+
 }
