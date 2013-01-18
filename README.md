@@ -1,0 +1,1 @@
+DATAGRAM_IO_UDP_HOST=server:host go run main.go
